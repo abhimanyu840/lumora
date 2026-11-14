@@ -1,0 +1,45 @@
+# Antigravity & AI scratch
+ai-workspace/scratch/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Rust
+target/
+**/*.rs.bk
+
+# Node / JS / Bun / Exact
+node_modules/
+.npm/
+bun.lockb
+.turbo/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Database & Local Model storage
+*.sqlite
+*.sqlite3
+*.db
+models/weights/
+models/cache/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
