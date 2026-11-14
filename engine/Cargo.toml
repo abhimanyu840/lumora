@@ -3,5 +3,6 @@ members = [
     "crates/lumora-core",
     "crates/lumora-ops",
     "crates/lumora-ai",
+    "crates/lumora-ffi",
 ]
 resolver = "2"

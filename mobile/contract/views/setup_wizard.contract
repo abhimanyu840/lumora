@@ -1,0 +1,107 @@
+// First-Launch On-Device AI Model Setup Wizard Contract
+// Downloads, verifies SHA-256 checksums, and configures NNAPI/CoreML execution providers
+
+component SetupWizardModal {
+    state {
+        download_progress: float = 0.0 // 0.0 to 1.0
+        is_downloading: bool = false
+        is_verified: bool = false
+        current_model_downloading: string = "dncnn.onnx"
+        storage_space_available: string = "32.4 GB Free"
+        required_storage: string = "150 MB"
+    }
+
+    style {
+        background_color: "#121418"
+        border-radius: 12px
+        padding: 20px
+        width: 90%
+        max_width: 440px
+        display: "flex"
+        flex_direction: "column"
+        gap: 14px
+        border: "1px solid #334155"
+        box_shadow: "0 20px 40px rgba(0,0,0,0.8)"
+    }
+
+    // Modal Header
+    view Header {
+        style { display: "flex"; flex_direction: "column"; gap: 4px }
+        text Title { value: "Initial AI Model Pack Setup"; style { font_size: 16px; font_weight: "bold"; color: "#F8FAFC" } }
+        text Subtitle {
+            value: "Lumora processes photos 100% on-device for total privacy. Download the 5 quantized AI enhancement models once to enable offline AI editing."
+            style { font_size: 11px; color: "#94A3B8"; line_height: "16px" }
+        }
+    }
+
+    // Model Package Checklist
+    view ModelList {
+        style { background_color: "#0F1115"; border-radius: 8px; padding: 10px; display: "flex"; flex_direction: "column"; gap: 6px }
+
+        view ModelItem1 {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; font_size: 11px }
+            text Name { value: "✓ DnCNN Gaussian Denoiser"; style { color: "#38BDF8" } }
+            text Size { value: "20 MB"; style { color: "#64748B" } }
+        }
+        view ModelItem2 {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; font_size: 11px }
+            text Name { value: "✓ MiDaS Portrait Bokeh"; style { color: "#38BDF8" } }
+            text Size { value: "40 MB"; style { color: "#64748B" } }
+        }
+        view ModelItem3 {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; font_size: 11px }
+            text Name { value: "✓ MobileNetV3 Scene Categorizer"; style { color: "#38BDF8" } }
+            text Size { value: "10 MB"; style { color: "#64748B" } }
+        }
+        view ModelItem4 {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; font_size: 11px }
+            text Name { value: "✓ Real-ESRGAN 4x Super-Resolution"; style { color: "#38BDF8" } }
+            text Size { value: "65 MB"; style { color: "#64748B" } }
+        }
+        view ModelItem5 {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; font_size: 11px }
+            text Name { value: "✓ Zero-DCE Night & Low Light"; style { color: "#38BDF8" } }
+            text Size { value: "15 MB"; style { color: "#64748B" } }
+        }
+    }
+
+    // Progress bar during download
+    view ProgressArea {
+        visible: state.is_downloading
+        style { display: "flex"; flex_direction: "column"; gap: 6px }
+        text ProgressStatus {
+            value: format("Downloading {:s} ({:.0f}%)...", state.current_model_downloading, state.download_progress * 100)
+            style { font_size: 11px; color: "#38BDF8" }
+        }
+        progress_bar ProgressBar {
+            value: state.download_progress
+            style { height: 8px; border_radius: 4px; background_color: "#1E293B"; fill_color: "#38BDF8" }
+        }
+    }
+
+    // Action Buttons
+    view ButtonRow {
+        style { display: "flex"; flex_direction: "row"; justify_content: "flex-end"; gap: 10px; margin_top: 8px }
+        button SkipBtn {
+            text: "Skip (Manual)"
+            on_click: emit("skip_setup_wizard")
+            style { background: "transparent"; color: "#94A3B8"; font_size: 12px; border: "none" }
+        }
+        button DownloadBtn {
+            text: state.is_downloading ? "Downloading..." : "Download Models (150 MB)"
+            disabled: state.is_downloading
+            on_click: {
+                state.is_downloading = true
+                emit("start_model_pack_download")
+            }
+            style {
+                background_color: "#2563EB"
+                color: "#FFFFFF"
+                font_size: 12px
+                font_weight: "bold"
+                border_radius: 6px
+                padding: "8px 16px"
+            }
+        }
+    }
+}

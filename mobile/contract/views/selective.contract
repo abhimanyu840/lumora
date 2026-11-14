@@ -1,0 +1,134 @@
+// Snapseed-style Selective Editing Contract
+// Interactive U-Point control pins, Euclidean Lab weighting, and localized parameter dials
+
+component SelectiveView {
+    state {
+        pin_count: int = 1
+        active_pin_index: int = 0
+        pin_radius: float = 0.25 // 0.01 to 2.0
+        pin_brightness: float = 0.0 // -1.0 to 1.0
+        pin_contrast: float = 0.0 // -1.0 to 1.0
+        pin_saturation: float = 0.0 // -1.0 to 1.0
+        pin_structure: float = 0.0
+        show_mask_overlay: bool = false
+    }
+
+    style {
+        padding: 12px
+        display: "flex"
+        flex_direction: "column"
+        gap: 10px
+    }
+
+    // Top action row for selective pins
+    view ActionRow {
+        style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; align_items: "center" }
+
+        view LeftStatus {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; gap: 8px }
+            text PinIndicator { value: format("Active Pin #{:d}", state.active_pin_index + 1); style { font_size: 13px; font_weight: "600"; color: "#38BDF8" } }
+            text PinCount { value: format("({:d} total)", state.pin_count); style { font_size: 11px; color: "#94A3B8" } }
+        }
+
+        view RightActions {
+            style { display: "flex"; flex_direction: "row"; gap: 8px }
+            button MaskToggleBtn {
+                text: state.show_mask_overlay ? "Hide Mask" : "Show Mask"
+                on_click: state.show_mask_overlay = !state.show_mask_overlay
+                style {
+                    background_color: state.show_mask_overlay ? "#DC2626" : "#262B36"
+                    color: "#FFFFFF"; font_size: 11px; border_radius: 6px; padding: "4px 8px"
+                }
+            }
+            button AddPinBtn {
+                text: "+ Add Pin"
+                on_click: emit("add_new_upoint_pin")
+                style {
+                    background_color: "#0284C7"; color: "#FFFFFF"; font_size: 11px; font_weight: "600"
+                    border_radius: 6px; padding: "4px 10px"
+                }
+            }
+            button ClearBtn {
+                text: "Clear All"
+                on_click: emit("clear_all_upoint_pins")
+                style {
+                    background_color: "#334155"; color: "#E2E8F0"; font_size: 11px
+                    border_radius: 6px; padding: "4px 8px"
+                }
+            }
+        }
+    }
+
+    // Snapseed-style 4 Parameter Dials (Brightness, Contrast, Saturation, Radius)
+    view SelectiveDialsGrid {
+        style { display: "flex"; flex_direction: "column"; gap: 8px; margin_top: 4px }
+
+        view RadiusRow {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; justify_content: "space-between" }
+            text L { value: "Reach (Radius)"; style { font_size: 11px; width: 100px; color: "#E2E8F0" } }
+            slider S {
+                min: 0.05
+                max: 1.0
+                step: 0.01
+                value: state.pin_radius
+                on_change: {
+                    state.pin_radius = event.value
+                    emit("update_pin_radius", { index: state.active_pin_index, radius: event.value })
+                }
+                style { flex: 1; margin_horizontal: 10px }
+            }
+            text V { value: format("{:.0f}%", state.pin_radius * 100); style { font_size: 11px; width: 45px; text_align: "right"; color: "#38BDF8" } }
+        }
+
+        view BrightnessRow {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; justify_content: "space-between" }
+            text L { value: "Brightness"; style { font_size: 11px; width: 100px; color: "#E2E8F0" } }
+            slider S {
+                min: -1.0
+                max: 1.0
+                step: 0.02
+                value: state.pin_brightness
+                on_change: {
+                    state.pin_brightness = event.value
+                    emit("update_pin_brightness", { index: state.active_pin_index, val: event.value })
+                }
+                style { flex: 1; margin_horizontal: 10px }
+            }
+            text V { value: format("{:+.0f}", state.pin_brightness * 100); style { font_size: 11px; width: 45px; text_align: "right"; color: "#38BDF8" } }
+        }
+
+        view ContrastRow {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; justify_content: "space-between" }
+            text L { value: "Contrast"; style { font_size: 11px; width: 100px; color: "#E2E8F0" } }
+            slider S {
+                min: -1.0
+                max: 1.0
+                step: 0.02
+                value: state.pin_contrast
+                on_change: {
+                    state.pin_contrast = event.value
+                    emit("update_pin_contrast", { index: state.active_pin_index, val: event.value })
+                }
+                style { flex: 1; margin_horizontal: 10px }
+            }
+            text V { value: format("{:+.0f}", state.pin_contrast * 100); style { font_size: 11px; width: 45px; text_align: "right"; color: "#38BDF8" } }
+        }
+
+        view SaturationRow {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; justify_content: "space-between" }
+            text L { value: "Saturation"; style { font_size: 11px; width: 100px; color: "#E2E8F0" } }
+            slider S {
+                min: -1.0
+                max: 1.0
+                step: 0.02
+                value: state.pin_saturation
+                on_change: {
+                    state.pin_saturation = event.value
+                    emit("update_pin_saturation", { index: state.active_pin_index, val: event.value })
+                }
+                style { flex: 1; margin_horizontal: 10px }
+            }
+            text V { value: format("{:+.0f}", state.pin_saturation * 100); style { font_size: 11px; width: 45px; text_align: "right"; color: "#38BDF8" } }
+        }
+    }
+}

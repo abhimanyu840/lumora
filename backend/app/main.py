@@ -3,7 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
+from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.models_dist import router as models_router
 from app.api.presets import router as presets_router
 
 
@@ -40,7 +42,9 @@ app.include_router(health_router)
 
 # API v1 routes
 app.include_router(health_router, prefix=settings.API_V1_STR)
+app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(presets_router, prefix=settings.API_V1_STR)
+app.include_router(models_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")

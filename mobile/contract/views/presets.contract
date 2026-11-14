@@ -1,0 +1,147 @@
+// Local & Marketplace Preset Browser Contract
+// Browse, upvote, download, and apply .lumora, Adobe .xmp, and .cube LUT presets
+
+component PresetsView {
+    state {
+        market_category: string = "portrait" // "all" | "portrait" | "landscape" | "vintage" | "cinematic" | "black_and_white" | "cyberpunk"
+        sort_by: string = "popular" // "popular" | "newest"
+        search_query: string = ""
+    }
+
+    style {
+        padding: 12px
+        display: "flex"
+        flex_direction: "column"
+        gap: 10px
+    }
+
+    // Category Filter Chips
+    view CategoryScrollView {
+        style { display: "flex"; flex_direction: "row"; gap: 6px; overflow_x: "auto"; padding_bottom: 4px }
+        button ChipPortrait {
+            text: "Portrait"
+            on_click: state.market_category = "portrait"
+            style {
+                background_color: state.market_category == "portrait" ? "#38BDF8" : "#262B36"
+                color: state.market_category == "portrait" ? "#0F172A" : "#E2E8F0"
+                border_radius: 12px; padding: "3px 10px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button ChipLandscape {
+            text: "Landscape"
+            on_click: state.market_category = "landscape"
+            style {
+                background_color: state.market_category == "landscape" ? "#38BDF8" : "#262B36"
+                color: state.market_category == "landscape" ? "#0F172A" : "#E2E8F0"
+                border_radius: 12px; padding: "3px 10px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button ChipVintage {
+            text: "Vintage"
+            on_click: state.market_category = "vintage"
+            style {
+                background_color: state.market_category == "vintage" ? "#38BDF8" : "#262B36"
+                color: state.market_category == "vintage" ? "#0F172A" : "#E2E8F0"
+                border_radius: 12px; padding: "3px 10px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button ChipCinematic {
+            text: "Cinematic"
+            on_click: state.market_category = "cinematic"
+            style {
+                background_color: state.market_category == "cinematic" ? "#38BDF8" : "#262B36"
+                color: state.market_category == "cinematic" ? "#0F172A" : "#E2E8F0"
+                border_radius: 12px; padding: "3px 10px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button ChipBW {
+            text: "B&W"
+            on_click: state.market_category = "black_and_white"
+            style {
+                background_color: state.market_category == "black_and_white" ? "#38BDF8" : "#262B36"
+                color: state.market_category == "black_and_white" ? "#0F172A" : "#E2E8F0"
+                border_radius: 12px; padding: "3px 10px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button ChipCyber {
+            text: "Cyberpunk"
+            on_click: state.market_category = "cyberpunk"
+            style {
+                background_color: state.market_category == "cyberpunk" ? "#38BDF8" : "#262B36"
+                color: state.market_category == "cyberpunk" ? "#0F172A" : "#E2E8F0"
+                border_radius: 12px; padding: "3px 10px"; font_size: 11px; font_weight: "600"
+            }
+        }
+    }
+
+    // Preset Cards Feed
+    view PresetCardsContainer {
+        style { display: "flex"; flex_direction: "column"; gap: 8px }
+
+        view PresetCard1 {
+            style {
+                background_color: "#181B22"
+                border_radius: 8px
+                padding: "8px 12px"
+                display: "flex"
+                flex_direction: "row"
+                justify_content: "space-between"
+                align_items: "center"
+                border: "1px solid #2D3748"
+            }
+
+            view PresetInfo {
+                style { display: "flex"; flex_direction: "column" }
+                text Name { value: "Portra 400 Warmth"; style { font_size: 13px; font_weight: "bold"; color: "#F8FAFC" } }
+                text Author { value: "by @AnalogPro · 1.4k downloads"; style { font_size: 10px; color: "#94A3B8" } }
+            }
+
+            view CardActions {
+                style { display: "flex"; flex_direction: "row"; gap: 6px; align_items: "center" }
+                button UpvoteBtn {
+                    text: "▲ 482"
+                    on_click: emit("upvote_preset", { id: 1 })
+                    style { background_color: "#262B36"; color: "#38BDF8"; font_size: 11px; border_radius: 4px; padding: "4px 8px" }
+                }
+                button ApplyPresetBtn {
+                    text: "Apply"
+                    on_click: emit("apply_preset_to_engine", { preset_id: 1 })
+                    style { background_color: "#0284C7"; color: "#FFFFFF"; font_size: 11px; font_weight: "bold"; border_radius: 4px; padding: "4px 12px" }
+                }
+            }
+        }
+
+        view PresetCard2 {
+            style {
+                background_color: "#181B22"
+                border_radius: 8px
+                padding: "8px 12px"
+                display: "flex"
+                flex_direction: "row"
+                justify_content: "space-between"
+                align_items: "center"
+                border: "1px solid #2D3748"
+            }
+
+            view PresetInfo {
+                style { display: "flex"; flex_direction: "column" }
+                text Name { value: "Nordic Moody Mist"; style { font_size: 13px; font_weight: "bold"; color: "#F8FAFC" } }
+                text Author { value: "by @FjordCraft · 920 downloads"; style { font_size: 10px; color: "#94A3B8" } }
+            }
+
+            view CardActions {
+                style { display: "flex"; flex_direction: "row"; gap: 6px; align_items: "center" }
+                button UpvoteBtn {
+                    text: "▲ 315"
+                    on_click: emit("upvote_preset", { id: 2 })
+                    style { background_color: "#262B36"; color: "#38BDF8"; font_size: 11px; border_radius: 4px; padding: "4px 8px" }
+                }
+                button ApplyPresetBtn {
+                    text: "Apply"
+                    on_click: emit("apply_preset_to_engine", { preset_id: 2 })
+                    style { background_color: "#0284C7"; color: "#FFFFFF"; font_size: 11px; font_weight: "bold"; border_radius: 4px; padding: "4px 12px" }
+                }
+            }
+        }
+    }
+}

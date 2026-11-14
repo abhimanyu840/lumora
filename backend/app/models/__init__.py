@@ -1,3 +1,4 @@
-from app.models.preset import PresetModel
+from app.models.preset import Preset, PresetModel
+from app.models.user import User, UserModel
 
-__all__ = ["PresetModel"]
+__all__ = ["Preset", "PresetModel", "User", "UserModel"]

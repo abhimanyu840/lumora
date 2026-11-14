@@ -16,6 +16,7 @@ build/
 
 # Rust
 target/
+**/target/
 **/*.rs.bk
 
 # Node / JS / Bun / Exact

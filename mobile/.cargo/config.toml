@@ -1,0 +1,19 @@
+# Cargo configuration for Android cross-compilation targeting realme RMX3870 (arm64-v8a / Android 16 API 36)
+# Target flags are applied when compiling with --target aarch64-linux-android
+
+[target.aarch64-linux-android]
+linker = "aarch64-linux-android36-clang"
+rustflags = [
+    "-C", "link-arg=-landroid",
+    "-C", "link-arg=-llog",
+    "-C", "link-arg=-ljnigraphics",
+    "-C", "target-feature=+neon",
+]
+
+[target.x86_64-linux-android]
+linker = "x86_64-linux-android36-clang"
+rustflags = [
+    "-C", "link-arg=-landroid",
+    "-C", "link-arg=-llog",
+    "-C", "link-arg=-ljnigraphics",
+]

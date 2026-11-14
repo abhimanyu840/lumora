@@ -1,0 +1,13 @@
+[package]
+name = "lumora-mobile-logic"
+version = "0.1.0"
+edition = "2021"
+description = "Exact runtime mobile logic module bridging Contract UI events to Lumora engine"
+
+[dependencies]
+lumora-core = { path = "../../engine/crates/lumora-core" }
+lumora-ops = { path = "../../engine/crates/lumora-ops" }
+lumora-ai = { path = "../../engine/crates/lumora-ai" }
+lumora-ffi = { path = "../../engine/crates/lumora-ffi" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

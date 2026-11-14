@@ -1,0 +1,206 @@
+// Lightroom-style Develop View Contract
+// Tone curves, exposure, contrast, 8-channel HSL mixer, 3-way color grading
+
+component DevelopView {
+    state {
+        develop_subtab: string = "basic" // "basic" | "curves" | "hsl" | "color_grading"
+        exposure: float = 0.0 // -5.0 to +5.0 EV
+        contrast: float = 0.0 // -1.0 to +1.0
+        highlights: float = 0.0
+        shadows: float = 0.0
+        saturation: float = 0.0 // -1.0 to +1.0
+        vibrance: float = 0.0
+        active_curve_channel: string = "master" // "master" | "red" | "green" | "blue"
+        active_hsl_channel: int = 0 // 0=Red..7=Magenta
+        hsl_hue: float = 0.0
+        hsl_sat: float = 0.0
+        hsl_lum: float = 0.0
+        shadows_hue: float = 210.0
+        shadows_sat: float = 0.0
+        highlights_hue: float = 45.0
+        highlights_sat: float = 0.0
+        grading_balance: float = 0.0
+    }
+
+    style {
+        padding: 12px
+        display: "flex"
+        flex_direction: "column"
+        gap: 10px
+    }
+
+    // Sub-Navigation Pills
+    view SubTabBar {
+        style { display: "flex"; flex_direction: "row"; gap: 8px; margin_bottom: 8px }
+        button BasicPill {
+            text: "Tone"
+            on_click: state.develop_subtab = "basic"
+            style {
+                background_color: state.develop_subtab == "basic" ? "#38BDF8" : "#262B36"
+                color: state.develop_subtab == "basic" ? "#0F172A" : "#E2E8F0"
+                border_radius: 14px; padding: "4px 12px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button CurvesPill {
+            text: "Curves"
+            on_click: state.develop_subtab = "curves"
+            style {
+                background_color: state.develop_subtab == "curves" ? "#38BDF8" : "#262B36"
+                color: state.develop_subtab == "curves" ? "#0F172A" : "#E2E8F0"
+                border_radius: 14px; padding: "4px 12px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button HslPill {
+            text: "HSL Mixer"
+            on_click: state.develop_subtab = "hsl"
+            style {
+                background_color: state.develop_subtab == "hsl" ? "#38BDF8" : "#262B36"
+                color: state.develop_subtab == "hsl" ? "#0F172A" : "#E2E8F0"
+                border_radius: 14px; padding: "4px 12px"; font_size: 11px; font_weight: "600"
+            }
+        }
+        button GradingPill {
+            text: "Color Wheels"
+            on_click: state.develop_subtab = "color_grading"
+            style {
+                background_color: state.develop_subtab == "color_grading" ? "#38BDF8" : "#262B36"
+                color: state.develop_subtab == "color_grading" ? "#0F172A" : "#E2E8F0"
+                border_radius: 14px; padding: "4px 12px"; font_size: 11px; font_weight: "600"
+            }
+        }
+    }
+
+    // 1. Basic Tone Sliders Section
+    view BasicToneSection {
+        visible: state.develop_subtab == "basic"
+        style { display: "flex"; flex_direction: "column"; gap: 12px }
+
+        view SliderRowExposure {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; align_items: "center" }
+            text Label { value: "Exposure"; style { font_size: 12px; width: 80px } }
+            slider SliderExposure {
+                min: -5.0
+                max: 5.0
+                step: 0.05
+                value: state.exposure
+                on_change: {
+                    state.exposure = event.value
+                    emit("update_exposure", { ev: event.value })
+                }
+                style { flex: 1; margin_horizontal: 10px }
+            }
+            text Val { value: format("{:+.2f} EV", state.exposure); style { font_size: 11px; width: 55px; text_align: "right"; color: "#38BDF8" } }
+        }
+
+        view SliderRowContrast {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; align_items: "center" }
+            text Label { value: "Contrast"; style { font_size: 12px; width: 80px } }
+            slider SliderContrast {
+                min: -1.0
+                max: 1.0
+                step: 0.02
+                value: state.contrast
+                on_change: {
+                    state.contrast = event.value
+                    emit("update_contrast", { factor: event.value })
+                }
+                style { flex: 1; margin_horizontal: 10px }
+            }
+            text Val { value: format("{:+.0f}", state.contrast * 100); style { font_size: 11px; width: 55px; text_align: "right"; color: "#38BDF8" } }
+        }
+
+        view SliderRowSaturation {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-between"; align_items: "center" }
+            text Label { value: "Saturation"; style { font_size: 12px; width: 80px } }
+            slider SliderSat {
+                min: -1.0
+                max: 1.0
+                step: 0.02
+                value: state.saturation
+                on_change: {
+                    state.saturation = event.value
+                    emit("update_saturation", { factor: event.value })
+                }
+                style { flex: 1; margin_horizontal: 10px }
+            }
+            text Val { value: format("{:+.0f}", state.saturation * 100); style { font_size: 11px; width: 55px; text_align: "right"; color: "#38BDF8" } }
+        }
+    }
+
+    // 2. Parametric Tone Curve Spline Section
+    view CurvesSection {
+        visible: state.develop_subtab == "curves"
+        style { display: "flex"; flex_direction: "column"; align_items: "center"; gap: 10px }
+
+        view CurveChannelSelector {
+            style { display: "flex"; flex_direction: "row"; gap: 12px }
+            button MasterBtn { text: "RGB"; on_click: state.active_curve_channel = "master"; style { color: "#FFFFFF" } }
+            button RedBtn { text: "Red"; on_click: state.active_curve_channel = "red"; style { color: "#EF4444" } }
+            button GreenBtn { text: "Green"; on_click: state.active_curve_channel = "green"; style { color: "#22C55E" } }
+            button BlueBtn { text: "Blue"; on_click: state.active_curve_channel = "blue"; style { color: "#3B82F6" } }
+        }
+
+        canvas CurveCanvas {
+            width: 240
+            height: 140
+            style { background_color: "#11141A"; border: "1px solid #334155"; border_radius: 6px }
+            on_drag_point: emit("curve_point_updated", { channel: state.active_curve_channel, x: event.x, y: event.y })
+        }
+    }
+
+    // 3. 8-Channel HSL Mixer Section
+    view HslSection {
+        visible: state.develop_subtab == "hsl"
+        style { display: "flex"; flex_direction: "column"; gap: 8px }
+
+        // 8 Channel Swatch Dots
+        view HslDots {
+            style { display: "flex"; flex_direction: "row"; justify_content: "space-around"; padding_vertical: 6px }
+            button Dot0 { on_click: state.active_hsl_channel = 0; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#EF4444" } } // Red
+            button Dot1 { on_click: state.active_hsl_channel = 1; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#F97316" } } // Orange
+            button Dot2 { on_click: state.active_hsl_channel = 2; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#EAB308" } } // Yellow
+            button Dot3 { on_click: state.active_hsl_channel = 3; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#22C55E" } } // Green
+            button Dot4 { on_click: state.active_hsl_channel = 4; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#06B6D4" } } // Aqua
+            button Dot5 { on_click: state.active_hsl_channel = 5; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#3B82F6" } } // Blue
+            button Dot6 { on_click: state.active_hsl_channel = 6; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#A855F7" } } // Purple
+            button Dot7 { on_click: state.active_hsl_channel = 7; style { width: 18px; height: 18px; border_radius: 9px; background_color: "#EC4899" } } // Magenta
+        }
+
+        view HslDials {
+            style { display: "flex"; flex_direction: "column"; gap: 8px }
+            view HslHueRow {
+                style { display: "flex"; flex_direction: "row"; align_items: "center" }
+                text L { value: "Hue"; style { font_size: 11px; width: 60px } }
+                slider S { min: -30.0; max: 30.0; value: state.hsl_hue; on_change: emit("update_hsl_hue", { channel: state.active_hsl_channel, val: event.value }); style { flex: 1 } }
+            }
+            view HslSatRow {
+                style { display: "flex"; flex_direction: "row"; align_items: "center" }
+                text L { value: "Sat"; style { font_size: 11px; width: 60px } }
+                slider S { min: -1.0; max: 1.0; value: state.hsl_sat; on_change: emit("update_hsl_sat", { channel: state.active_hsl_channel, val: event.value }); style { flex: 1 } }
+            }
+            view HslLumRow {
+                style { display: "flex"; flex_direction: "row"; align_items: "center" }
+                text L { value: "Lum"; style { font_size: 11px; width: 60px } }
+                slider S { min: -1.0; max: 1.0; value: state.hsl_lum; on_change: emit("update_hsl_lum", { channel: state.active_hsl_channel, val: event.value }); style { flex: 1 } }
+            }
+        }
+    }
+
+    // 4. 3-Way Color Grading Split Toning Wheels
+    view ColorGradingSection {
+        visible: state.develop_subtab == "color_grading"
+        style { display: "flex"; flex_direction: "row"; justify_content: "space-around"; align_items: "center"; gap: 10px }
+
+        view ShadowsWheel {
+            style { display: "flex"; flex_direction: "column"; align_items: "center"; gap: 4px }
+            text Title { value: "Shadows"; style { font_size: 11px; color: "#94A3B8" } }
+            dial HueDial { min: 0.0; max: 360.0; value: state.shadows_hue; on_change: emit("update_shadows_hue", { val: event.value }) }
+        }
+
+        view HighlightsWheel {
+            style { display: "flex"; flex_direction: "column"; align_items: "center"; gap: 4px }
+            text Title { value: "Highlights"; style { font_size: 11px; color: "#94A3B8" } }
+            dial HueDial { min: 0.0; max: 360.0; value: state.highlights_hue; on_change: emit("update_highlights_hue", { val: event.value }) }
+        }
+    }
+}

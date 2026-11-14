@@ -1,0 +1,16 @@
+[package]
+name = "lumora-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "C-compatible and JNI FFI bindings for Lumora image processing engine"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+lumora-core = { path = "../lumora-core" }
+lumora-ops = { path = "../lumora-ops" }
+lumora-ai = { path = "../lumora-ai" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+libc = "0.2"

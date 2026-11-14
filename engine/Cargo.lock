@@ -120,6 +120,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bd1574e617a9a6c1f8f8181bd7e841e1f20e4277607ef28945765188d6284d4"
 
 [[package]]
+name = "libc"
+version = "0.2.191"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
+
+[[package]]
 name = "lumora-ai"
 version = "0.1.0"
 dependencies = [
@@ -136,6 +142,18 @@ name = "lumora-core"
 version = "0.1.0"
 dependencies = [
  "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lumora-ffi"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "lumora-ai",
+ "lumora-core",
+ "lumora-ops",
  "serde",
  "serde_json",
 ]

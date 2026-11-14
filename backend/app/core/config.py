@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./lumora.db"
     
     # Security
-    SECRET_KEY: str = "dev-secret-change-in-production"
+    SECRET_KEY: str = "dev-secret-change-in-production-lumora-2026"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # MinIO / S3

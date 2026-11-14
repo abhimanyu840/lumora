@@ -29,9 +29,10 @@ Status: new project, 1 commit (`7801542`). Groundwork initialized with deep rese
 | check adb device | `adb -s VSNF6DIBCU99CE89 get-state` | `verified` — device online: realme RMX3870 (Android 16, API 36, arm64-v8a) |
 | backend install | `pip install -r backend/requirements.txt` | `verified` — requirements.txt defined |
 | backend run | `uvicorn app.main:app --reload --port 8000` | `verified` — tested via pytest and TestClient |
-| backend test | `python -m pytest backend/tests` | `verified` — 8 tests pass in 0.12s |
+| backend test | `python -m pytest backend/tests` | `verified` — 16 tests pass in 0.65s |
 | engine build | `cargo build --manifest-path engine/Cargo.toml` | `verified` — builds cleanly with zero warnings |
-| engine test | `cargo test --manifest-path engine/Cargo.toml` | `verified` — 38 tests pass across lumora-core, lumora-ops & lumora-ai |
+| engine test | `cargo test --manifest-path engine/Cargo.toml` | `verified` — 44 tests pass across lumora-core, lumora-ops, lumora-ai & lumora-ffi |
+| mobile logic test | `cargo test --manifest-path mobile/logic/Cargo.toml` | `verified` — 2 tests pass for Contract engine bridge |
 | model conversion | `python models/scripts/convert_models.py` | `verified` — all 5 ONNX models exported & verified via onnxruntime |
 | podman compose up | `podman compose -f compose.yaml up -d` | `verified` — compose.yaml defined with db, minio, and backend |
 
@@ -43,23 +44,26 @@ ai-workspace/
   prompts/            # Source user prompts and task specs (created)
   research/           # Deep research findings and competitive teardowns (created)
   scratch/            # Ephemeral build artifacts and tests (ignored)
-backend/              # FastAPI cloud sync & marketplace service (planned)
+backend/              # FastAPI cloud sync & marketplace service (created)
   app/
-    api/              # Routes (auth, presets, marketplace)
+    api/              # Routes (auth, health, presets, models_dist)
     core/             # Config, security, database session
-    models/           # SQLAlchemy ORM models
-    schemas/          # Pydantic data transfer schemas
-engine/               # Rust core image processing engine (planned)
+    models/           # SQLAlchemy & SQLite fallback ORM models (user, preset)
+    schemas/          # Pydantic schemas (user, preset, tokens, manifest)
+  tests/              # Test suite (test_auth, test_database, test_health, test_marketplace, test_models_dist)
+engine/               # Rust core image processing engine (created)
   crates/
-    lumora-core/      # Pixel buffer, color spaces, non-destructive node graph (created)
-    lumora-ops/       # Lightroom & Snapseed image manipulation kernels (created)
-    lumora-ai/        # On-device model execution bindings, models & LRU raster cache (created)
-mobile/               # Exact runtime mobile application (planned)
-  contracts/          # Contract UI view declarations (4-Tab workspace)
-  logic/              # Rust / TS logic modules bridging engine and UI
+    lumora-core/      # Pixel buffer, color spaces, non-destructive node graph
+    lumora-ops/       # Lightroom & Snapseed image manipulation kernels
+    lumora-ai/        # On-device model execution bindings, models & LRU raster cache
+    lumora-ffi/       # C-compatible and safe Rust FFI mobile exports
+mobile/               # Exact runtime mobile application (created)
+  contract/           # Contract UI view declarations (app, develop, selective, ai_lab, presets, setup_wizard)
+  logic/              # Rust logic module bridging Contract events to engine (engine_bridge.rs)
+  android/            # Android target manifest, Gradle script, CMake, JNI native bridge (arm64-v8a)
 models/               # Quantized model conversion & weights manifest (created)
   scripts/            # Conversion and ONNX export scripts
-  weights/            # Exported ONNX model binaries
+  weights/            # Exported ONNX model binaries (dncnn, midas, mobilenet_scene, realesrgan_x4, zerodce)
 compose.yaml          # Podman / Docker multi-container composition (created)
 ```
 
@@ -85,16 +89,18 @@ Done when:
 
 ## Not Yet Built
 
-- **Mobile Application (`mobile/`):** Exact Contract layouts, gesture canvas, and mobile bridge (Phase 4).
-- **Preset Marketplace Endpoints:** Advanced rating and file upload S3 storage integration (Phase 3).
+- **Preset Marketplace S3 Uploads:** Optional MinIO direct S3 multipart presigned upload for community binary files (Phase 5).
+- **Camera RAW Library:** In-tree RAW decoder integration for `.dng`, `.cr2`, `.nef` sensors (Phase 5).
 
 ## Verification
 
-Application code for Phase 0, Phase 1, and Phase 2 is verified:
-- Python backend test suite: `python -m pytest backend/tests` (8 passed in 0.12s).
-- Rust image engine test suite: `cargo test --manifest-path engine/Cargo.toml` (38 passed in 0.42s across lumora-core: 8, lumora-ops: 12, and lumora-ai: 18).
-- AI model export & verification: `python models/scripts/convert_models.py` (5 ONNX models exported and verified in onnxruntime).
-- Clippy & formatting: `cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings` and `cargo fmt --manifest-path engine/Cargo.toml --all -- --check` pass with 0 errors/warnings.
+Application code for Phase 0, Phase 1, Phase 2, Phase 3, and Phase 4 is verified:
+- Python backend test suite: `python -m pytest backend/tests` (16 passed in 0.65s across auth, database, health, marketplace, models_dist).
+- Rust image engine test suite: `cargo test --manifest-path engine/Cargo.toml` (44 passed in 0.48s across lumora-core: 8, lumora-ops: 12, lumora-ai: 18, and lumora-ffi: 6).
+- Mobile logic bridge test suite: `cargo test --manifest-path mobile/logic/Cargo.toml` (2 passed in 0.02s).
+- Total Rust unit tests: 46 tests pass cleanly.
+- AI model export & verification: `python models/scripts/convert_models.py` (all 5 ONNX models exported & verified in onnxruntime).
+- Clippy & formatting: `cargo clippy --all-targets -- -D warnings` and `cargo fmt --all -- --check` pass with 0 errors/warnings across all engine and mobile crates.
 - Python linting: `python -m ruff check backend models` passes cleanly with 0 errors.
 
 ## Open Items & Decisions

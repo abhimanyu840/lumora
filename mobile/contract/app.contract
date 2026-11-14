@@ -1,0 +1,233 @@
+// Lumora Main Application Contract
+// Cross-platform declarative UI for Exact (Android, iOS, Web)
+
+component App {
+    state {
+        active_tab: string = "develop" // "develop" | "selective" | "ai_lab" | "presets"
+        has_image: bool = true
+        image_name: string = "IMG_4821_RAW.dng"
+        image_dimensions: string = "4032 x 3024 (12.2 MP)"
+        zoom_level: float = 1.0
+        compare_mode: bool = false
+        is_processing: bool = false
+        setup_wizard_open: bool = false
+        can_undo: bool = true
+        can_redo: bool = false
+    }
+
+    style {
+        background_color: "#121418"
+        color: "#E2E8F0"
+        font_family: "system-ui, -apple-system, sans-serif"
+        width: 100%
+        height: 100%
+        display: "flex"
+        flex_direction: "column"
+        overflow: "hidden"
+    }
+
+    // Top Action Bar
+    view HeaderBar {
+        style {
+            height: 56px
+            background_color: "#1A1D24"
+            border_bottom: "1px solid #2D3748"
+            display: "flex"
+            flex_direction: "row"
+            align_items: "center"
+            justify_content: "space-between"
+            padding_horizontal: 16px
+        }
+
+        view LeftGroup {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; gap: 12px }
+            text Logo { value: "LUMORA"; style { font_weight: "bold"; font_size: 18px; color: "#38BDF8" } }
+            text ImageMeta { value: state.image_dimensions; style { font_size: 11px; color: "#94A3B8" } }
+        }
+
+        view CenterGroup {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; gap: 8px }
+            button UndoBtn {
+                text: "↩ Undo"
+                disabled: !state.can_undo
+                on_click: emit("undo_edit")
+                style { background: "transparent"; color: state.can_undo ? "#E2E8F0" : "#64748B"; border: "none" }
+            }
+            button RedoBtn {
+                text: "Redo ↪"
+                disabled: !state.can_redo
+                on_click: emit("redo_edit")
+                style { background: "transparent"; color: state.can_redo ? "#E2E8F0" : "#64748B"; border: "none" }
+            }
+        }
+
+        view RightGroup {
+            style { display: "flex"; flex_direction: "row"; align_items: "center"; gap: 10px }
+            button CompareBtn {
+                text: state.compare_mode ? "Normal" : "Before/After"
+                on_click: state.compare_mode = !state.compare_mode
+                style {
+                    background_color: state.compare_mode ? "#0284C7" : "#262B36"
+                    color: "#FFFFFF"
+                    border_radius: 6px
+                    padding: "6px 12px"
+                    font_size: 12px
+                }
+            }
+            button ExportBtn {
+                text: "Export"
+                on_click: emit("export_rendered_image")
+                style {
+                    background_color: "#2563EB"
+                    color: "#FFFFFF"
+                    font_weight: "600"
+                    border_radius: 6px
+                    padding: "6px 14px"
+                    font_size: 12px
+                }
+            }
+        }
+    }
+
+    // Interactive Viewport / Canvas Area
+    view CanvasViewport {
+        style {
+            flex: 1
+            background_color: "#0A0B0E"
+            display: "flex"
+            align_items: "center"
+            justify_content: "center"
+            position: "relative"
+        }
+
+        image ImagePreview {
+            source: "render://current_preview"
+            style {
+                max_width: 95%
+                max_height: 95%
+                border_radius: 4px
+                box_shadow: "0 10px 30px rgba(0,0,0,0.6)"
+            }
+        }
+
+        // Overlay for selective U-Point pins
+        view SelectivePinsOverlay {
+            visible: state.active_tab == "selective"
+            style { position: "absolute"; top: 0; left: 0; right: 0; bottom: 0 }
+        }
+
+        // Processing spinner overlay during heavy neural network execution
+        view LoadingOverlay {
+            visible: state.is_processing
+            style {
+                position: "absolute"
+                top: 0
+                left: 0
+                right: 0
+                bottom: 0
+                background_color: "rgba(0,0,0,0.5)"
+                display: "flex"
+                align_items: "center"
+                justify_content: "center"
+            }
+            text LoadingText { value: "Neural Inference in Progress..."; style { color: "#38BDF8"; font_size: 14px } }
+        }
+    }
+
+    // Active Tab Content Drawer (Develop, Selective, AI Lab, Presets)
+    view ToolPanel {
+        style {
+            height: 290px
+            background_color: "#1A1D24"
+            border_top: "1px solid #2D3748"
+            overflow_y: "auto"
+        }
+
+        view DevelopView {
+            visible: state.active_tab == "develop"
+            include: "./views/develop.contract"
+        }
+
+        view SelectiveView {
+            visible: state.active_tab == "selective"
+            include: "./views/selective.contract"
+        }
+
+        view AiLabView {
+            visible: state.active_tab == "ai_lab"
+            include: "./views/ai_lab.contract"
+        }
+
+        view PresetsView {
+            visible: state.active_tab == "presets"
+            include: "./views/presets.contract"
+        }
+    }
+
+    // Bottom Navigation Bar (4 Primary Tabs)
+    view BottomTabBar {
+        style {
+            height: 60px
+            background_color: "#121418"
+            border_top: "1px solid #2D3748"
+            display: "flex"
+            flex_direction: "row"
+            align_items: "center"
+            justify_content: "space-around"
+        }
+
+        button TabDevelop {
+            text: "Develop"
+            on_click: state.active_tab = "develop"
+            style {
+                color: state.active_tab == "develop" ? "#38BDF8" : "#94A3B8"
+                font_weight: state.active_tab == "develop" ? "bold" : "normal"
+                font_size: 13px
+                background: "transparent"
+                border: "none"
+            }
+        }
+
+        button TabSelective {
+            text: "Selective"
+            on_click: state.active_tab = "selective"
+            style {
+                color: state.active_tab == "selective" ? "#38BDF8" : "#94A3B8"
+                font_weight: state.active_tab == "selective" ? "bold" : "normal"
+                font_size: 13px
+                background: "transparent"
+                border: "none"
+            }
+        }
+
+        button TabAiLab {
+            text: "AI Lab"
+            on_click: state.active_tab = "ai_lab"
+            style {
+                color: state.active_tab == "ai_lab" ? "#38BDF8" : "#94A3B8"
+                font_weight: state.active_tab == "ai_lab" ? "bold" : "normal"
+                font_size: 13px
+                background: "transparent"
+                border: "none"
+            }
+        }
+
+        button TabPresets {
+            text: "Presets"
+            on_click: state.active_tab = "presets"
+            style {
+                color: state.active_tab == "presets" ? "#38BDF8" : "#94A3B8"
+                font_weight: state.active_tab == "presets" ? "bold" : "normal"
+                font_size: 13px
+                background: "transparent"
+                border: "none"
+            }
+        }
+    }
+
+    // Modal: Setup Wizard for first-launch model downloads
+    modal SetupWizardModal {
+        visible: state.setup_wizard_open
+        include: "./views/setup_wizard.contract"
+    }
+}
