@@ -80,6 +80,20 @@ impl EngineBridgeState {
         }
     }
 
+    /// Export the current full-resolution image using the tiled pipeline.
+    pub fn export_full_image(
+        &self,
+        format: lumora_core::exporter::ExportFormat,
+        tile_size: usize,
+    ) -> Result<Vec<u8>, String> {
+        let img = self
+            .current_image
+            .as_ref()
+            .ok_or_else(|| "No image currently loaded in engine".to_string())?;
+        img.export_full_resolution(format, tile_size)
+            .map_err(|e| e.to_string())
+    }
+
     /// Dispatch and execute a Contract event by name.
     pub fn handle_event(&mut self, event_name: &str, payload_json: &str) -> EventResponse {
         let img = match self.current_image.as_mut() {

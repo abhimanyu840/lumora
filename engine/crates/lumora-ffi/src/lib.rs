@@ -15,7 +15,8 @@ use std::sync::Arc;
 
 use lumora_ai::pipeline::{AiDenoiseOp, AiDepthBokehOp, AiSuperResOp, AiZeroDceOp};
 use lumora_core::buffer::{PixelBufferF32, PixelBufferRgba8, RgbaF32};
-use lumora_core::dag::{ContrastOp, ExposureOp, ImageOp, SaturationOp};
+use lumora_core::dag::{ContrastOp, ExposureOp, ImageOp, PipelineDAG, SaturationOp};
+use lumora_core::exporter::{ExportError, ExportFormat, ImageExporter};
 use lumora_ops::color_grading::{ColorGrading, GradingWheel};
 use lumora_ops::curves::{CurvePoint, ToneCurves};
 use lumora_ops::hsl::{ChannelAdjust, HslMixer};
@@ -198,6 +199,80 @@ impl LumoraImage {
             }
         }
         dst
+    }
+
+    /// Render and export the original full-resolution image using memory-efficient tiled processing.
+    pub fn export_full_resolution(
+        &self,
+        format: ExportFormat,
+        tile_size: usize,
+    ) -> Result<Vec<u8>, ExportError> {
+        if self.original.width == 0 || self.original.height == 0 {
+            return Err(ExportError::EmptyBuffer);
+        }
+
+        let tile_sz = if tile_size > 0 { tile_size } else { 512 };
+        let exporter = ImageExporter::new(format).with_tile_size(tile_sz);
+
+        let mut dag = PipelineDAG::new();
+
+        // 1. Exposure
+        if self.exposure.abs() > 1e-4 {
+            dag.add_node(ExposureOp { ev: self.exposure });
+        }
+
+        // 2. Contrast
+        if self.contrast.abs() > 1e-4 {
+            dag.add_node(ContrastOp {
+                amount: self.contrast,
+            });
+        }
+
+        // 3. Saturation
+        if self.saturation.abs() > 1e-4 {
+            dag.add_node(SaturationOp {
+                amount: self.saturation,
+            });
+        }
+
+        // 4. Tone Curves
+        if !self.curves.is_identity() {
+            dag.add_node(self.curves.clone());
+        }
+
+        // 5. 8-Channel HSL Mixer
+        dag.add_node(self.hsl.clone());
+
+        // 6. 3-Way Color Grading
+        dag.add_node(self.color_grading.clone());
+
+        // 7. U-Point Selective Control Pins
+        if !self.upoints.pins.is_empty() {
+            let mut upoints = self.upoints.clone();
+            upoints.resolve_targets(&self.original);
+            dag.add_node(upoints);
+        }
+
+        // 8. AI Enhancement passes
+        for &(op_type, strength) in &self.ai_passes {
+            match op_type {
+                1 => {
+                    dag.add_node(AiDenoiseOp::new(strength));
+                }
+                2 => {
+                    dag.add_node(AiZeroDceOp::new(strength));
+                }
+                3 => {
+                    dag.add_node(AiSuperResOp::new());
+                }
+                4 => {
+                    dag.add_node(AiDepthBokehOp::new(0.5, strength, 8.0));
+                }
+                _ => {}
+            }
+        }
+
+        exporter.export_tiled_dag(&self.original, &dag)
     }
 }
 
@@ -655,5 +730,68 @@ pub unsafe extern "C" fn lumora_apply_preset_json(
             LUMORA_SUCCESS
         }
         Err(_) => LUMORA_ERR_INVALID_PARAM,
+    }
+}
+
+/// Export the full-resolution image using memory-efficient tiled processing.
+///
+/// * `image`: Pointer to LumoraImage session.
+/// * `format_code`: 0 = JPEG, 1 = PNG, 2 = WebP.
+/// * `quality`: Quality parameter (1..=100 for JPEG; 0 = default 90).
+/// * `tile_size`: Tile dimension in pixels (e.g. 512, 1024; 0 = default 512).
+/// * `out_data`: Pointer to receive the allocated output byte buffer.
+/// * `out_len`: Pointer to receive the length of the output buffer.
+///
+/// The caller must free `*out_data` using `lumora_free_export_data`.
+#[no_mangle]
+pub unsafe extern "C" fn lumora_export_image(
+    image: *const LumoraImage,
+    format_code: i32,
+    quality: i32,
+    tile_size: u32,
+    out_data: *mut *mut u8,
+    out_len: *mut usize,
+) -> i32 {
+    if image.is_null() || out_data.is_null() || out_len.is_null() {
+        return LUMORA_ERR_NULL_PTR;
+    }
+
+    let q = if (1..=100).contains(&quality) {
+        quality as u8
+    } else {
+        90
+    };
+
+    let format = match format_code {
+        0 => ExportFormat::Jpeg { quality: q },
+        1 => ExportFormat::Png,
+        2 => ExportFormat::WebP { lossless: true },
+        _ => return LUMORA_ERR_INVALID_PARAM,
+    };
+
+    let tile_sz = if tile_size > 0 {
+        tile_size as usize
+    } else {
+        512
+    };
+
+    match (*image).export_full_resolution(format, tile_sz) {
+        Ok(bytes) => {
+            *out_len = bytes.len();
+            let mut boxed = bytes.into_boxed_slice();
+            *out_data = boxed.as_mut_ptr();
+            std::mem::forget(boxed);
+            LUMORA_SUCCESS
+        }
+        Err(_) => LUMORA_ERR_PIPELINE,
+    }
+}
+
+/// Free an export data buffer allocated by `lumora_export_image`.
+#[no_mangle]
+pub unsafe extern "C" fn lumora_free_export_data(data: *mut u8, len: usize) {
+    if !data.is_null() && len > 0 {
+        let slice_ptr = ptr::slice_from_raw_parts_mut(data, len);
+        drop(Box::from_raw(slice_ptr));
     }
 }

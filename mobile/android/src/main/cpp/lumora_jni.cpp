@@ -22,6 +22,8 @@ extern "C" {
     int32_t lumora_clear_upoints(void* image);
     int32_t lumora_apply_ai_enhancement(void* image, int32_t op_type, float strength);
     int32_t lumora_render_preview(void* image, uint8_t* out_rgba, uint32_t max_width, uint32_t max_height);
+    int32_t lumora_export_image(const void* image, int32_t format_code, int32_t quality, uint32_t tile_size, uint8_t** out_data, size_t* out_len);
+    void lumora_free_export_data(uint8_t* data, size_t len);
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -93,4 +95,44 @@ Java_art_lumora_mobile_MainActivity_nativeRenderPreview(
 
     AndroidBitmap_unlockPixels(env, out_bitmap);
     return res;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_art_lumora_mobile_MainActivity_nativeExportImage(
+    JNIEnv* env,
+    jobject /* this */,
+    jlong handle,
+    jint format,
+    jint quality,
+    jint tile_size) {
+    if (handle == 0) return nullptr;
+
+    uint8_t* out_data = nullptr;
+    size_t out_len = 0;
+    int32_t res = lumora_export_image(
+        reinterpret_cast<const void*>(handle),
+        format,
+        quality,
+        static_cast<uint32_t>(tile_size),
+        &out_data,
+        &out_len
+    );
+
+    if (res != 0 || out_data == nullptr || out_len == 0) {
+        LOGE("Failed to export image: error code %d", res);
+        return nullptr;
+    }
+
+    jbyteArray result = env->NewByteArray(static_cast<jsize>(out_len));
+    if (result != nullptr) {
+        env->SetByteArrayRegion(
+            result,
+            0,
+            static_cast<jsize>(out_len),
+            reinterpret_cast<const jbyte*>(out_data)
+        );
+    }
+
+    lumora_free_export_data(out_data, out_len);
+    return result;
 }

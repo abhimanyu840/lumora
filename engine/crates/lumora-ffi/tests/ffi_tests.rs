@@ -292,3 +292,91 @@ fn test_ffi_channel_curves_and_full_grading() {
         lumora_image_destroy(handle);
     }
 }
+
+#[test]
+fn test_ffi_export_image_all_formats_and_null_safety() {
+    let width = 64u32;
+    let height = 48u32;
+    let mut raw_rgba = Vec::with_capacity((width * height * 4) as usize);
+    for i in 0..(width * height) {
+        let r = (i % 256) as u8;
+        let g = ((i * 3) % 256) as u8;
+        let b = ((i * 7) % 256) as u8;
+        raw_rgba.extend_from_slice(&[r, g, b, 255]);
+    }
+
+    unsafe {
+        // Null safety checks
+        let mut out_data: *mut u8 = ptr::null_mut();
+        let mut out_len: usize = 0;
+        assert_eq!(
+            lumora_export_image(ptr::null(), 0, 90, 32, &mut out_data, &mut out_len),
+            LUMORA_ERR_NULL_PTR
+        );
+
+        let handle = lumora_image_create(width, height, raw_rgba.as_ptr());
+        assert!(!handle.is_null());
+
+        assert_eq!(
+            lumora_export_image(handle, 0, 90, 32, ptr::null_mut(), &mut out_len),
+            LUMORA_ERR_NULL_PTR
+        );
+
+        assert_eq!(
+            lumora_export_image(handle, 0, 90, 32, &mut out_data, ptr::null_mut()),
+            LUMORA_ERR_NULL_PTR
+        );
+
+        // Invalid format code
+        assert_eq!(
+            lumora_export_image(handle, 99, 90, 32, &mut out_data, &mut out_len),
+            LUMORA_ERR_INVALID_PARAM
+        );
+
+        // 1. Export JPEG (format_code = 0)
+        assert_eq!(
+            lumora_export_image(handle, 0, 85, 32, &mut out_data, &mut out_len),
+            LUMORA_SUCCESS
+        );
+        assert!(!out_data.is_null());
+        assert!(out_len > 0);
+        let jpeg_slice = std::slice::from_raw_parts(out_data, out_len);
+        assert_eq!(&jpeg_slice[0..3], &[0xFF, 0xD8, 0xFF]);
+        lumora_free_export_data(out_data, out_len);
+
+        // 2. Export PNG (format_code = 1)
+        out_data = ptr::null_mut();
+        out_len = 0;
+        assert_eq!(
+            lumora_export_image(handle, 1, 0, 32, &mut out_data, &mut out_len),
+            LUMORA_SUCCESS
+        );
+        assert!(!out_data.is_null());
+        assert!(out_len > 0);
+        let png_slice = std::slice::from_raw_parts(out_data, out_len);
+        assert_eq!(
+            &png_slice[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
+        lumora_free_export_data(out_data, out_len);
+
+        // 3. Export WebP (format_code = 2)
+        out_data = ptr::null_mut();
+        out_len = 0;
+        assert_eq!(
+            lumora_export_image(handle, 2, 0, 32, &mut out_data, &mut out_len),
+            LUMORA_SUCCESS
+        );
+        assert!(!out_data.is_null());
+        assert!(out_len > 0);
+        let webp_slice = std::slice::from_raw_parts(out_data, out_len);
+        assert_eq!(&webp_slice[0..4], b"RIFF");
+        assert_eq!(&webp_slice[8..12], b"WEBP");
+        lumora_free_export_data(out_data, out_len);
+
+        // Free null data should be safe no-op
+        lumora_free_export_data(ptr::null_mut(), 0);
+
+        lumora_image_destroy(handle);
+    }
+}

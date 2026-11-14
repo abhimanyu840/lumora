@@ -11,6 +11,21 @@ static NEXT_NODE_ID: AtomicU64 = AtomicU64::new(1);
 pub trait ImageOp: Send + Sync {
     fn name(&self) -> &str;
     fn apply(&self, buffer: &mut PixelBufferF32);
+
+    /// Apply the operation to an extracted tile with awareness of its global image coordinates.
+    ///
+    /// Point-wise operations default to invoking `self.apply(tile)`. Spatial operations
+    /// (e.g. U-Point control pins) override this to preserve exact coordinates without distortion.
+    fn apply_tile(
+        &self,
+        tile: &mut PixelBufferF32,
+        _origin_x: usize,
+        _origin_y: usize,
+        _full_width: usize,
+        _full_height: usize,
+    ) {
+        self.apply(tile);
+    }
 }
 
 // Built-in Core Image Operations

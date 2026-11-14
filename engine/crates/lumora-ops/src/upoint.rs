@@ -43,23 +43,67 @@ impl UPointMask {
         self.pins.push(pin);
     }
 
+    /// Pre-resolve sampled target Lab values for all control pins from a reference buffer.
+    pub fn resolve_targets(&mut self, buffer: &PixelBufferF32) {
+        let width = buffer.width;
+        let height = buffer.height;
+        if width == 0 || height == 0 {
+            return;
+        }
+        for pin in &mut self.pins {
+            if pin.target_lab.is_none() {
+                let px =
+                    ((pin.center_x * (width - 1) as f32) as usize).min(width.saturating_sub(1));
+                let py =
+                    ((pin.center_y * (height - 1) as f32) as usize).min(height.saturating_sub(1));
+                if let Some(p) = buffer.get_pixel(px, py) {
+                    pin.target_lab = Some(srgb_to_lab(p.r, p.g, p.b));
+                }
+            }
+        }
+    }
+
     pub fn apply_to_buffer(&self, buffer: &mut PixelBufferF32) {
-        if self.pins.is_empty() || buffer.width == 0 || buffer.height == 0 {
+        self.apply_to_tile(buffer, 0, 0, buffer.width, buffer.height);
+    }
+
+    /// Apply selective U-Point pins to an extracted tile using global image coordinates.
+    pub fn apply_to_tile(
+        &self,
+        tile: &mut PixelBufferF32,
+        origin_x: usize,
+        origin_y: usize,
+        full_width: usize,
+        full_height: usize,
+    ) {
+        if self.pins.is_empty()
+            || tile.width == 0
+            || tile.height == 0
+            || full_width == 0
+            || full_height == 0
+        {
             return;
         }
 
-        let width = buffer.width;
-        let height = buffer.height;
-        let aspect = width as f32 / height as f32;
+        let tile_w = tile.width;
+        let aspect = full_width as f32 / full_height as f32;
 
         // Ensure target Lab is sampled for pins that do not have it explicitly set
         let mut resolved_pins = self.pins.clone();
         for pin in &mut resolved_pins {
             if pin.target_lab.is_none() {
-                let px = ((pin.center_x * (width - 1) as f32) as usize).min(width - 1);
-                let py = ((pin.center_y * (height - 1) as f32) as usize).min(height - 1);
-                if let Some(p) = buffer.get_pixel(px, py) {
-                    pin.target_lab = Some(srgb_to_lab(p.r, p.g, p.b));
+                let px = ((pin.center_x * (full_width - 1) as f32) as usize)
+                    .min(full_width.saturating_sub(1));
+                let py = ((pin.center_y * (full_height - 1) as f32) as usize)
+                    .min(full_height.saturating_sub(1));
+                if px >= origin_x
+                    && px < origin_x + tile_w
+                    && py >= origin_y
+                    && py < origin_y + tile.height
+                {
+                    if let Some(p) = tile.get_pixel(px - origin_x, py - origin_y) {
+                        pin.target_lab = Some(srgb_to_lab(p.r, p.g, p.b));
+                    }
                 }
             }
         }
@@ -68,15 +112,16 @@ impl UPointMask {
         let color_tolerance = 45.0f32; // CIE-Lab tolerance threshold
 
         // Process in parallel row-by-row using Rayon
-        buffer
-            .data
-            .par_chunks_exact_mut(width * 4)
+        tile.data
+            .par_chunks_exact_mut(tile_w * 4)
             .enumerate()
             .for_each(|(y, row)| {
-                let norm_y = y as f32 / height as f32;
+                let global_y = origin_y + y;
+                let norm_y = global_y as f32 / full_height as f32;
 
-                for x in 0..width {
-                    let norm_x = x as f32 / width as f32;
+                for x in 0..tile_w {
+                    let global_x = origin_x + x;
+                    let norm_x = global_x as f32 / full_width as f32;
                     let offset = x * 4;
 
                     let mut cur_r = row[offset];
@@ -161,5 +206,16 @@ impl ImageOp for UPointMask {
 
     fn apply(&self, buffer: &mut PixelBufferF32) {
         self.apply_to_buffer(buffer);
+    }
+
+    fn apply_tile(
+        &self,
+        tile: &mut PixelBufferF32,
+        origin_x: usize,
+        origin_y: usize,
+        full_width: usize,
+        full_height: usize,
+    ) {
+        self.apply_to_tile(tile, origin_x, origin_y, full_width, full_height);
     }
 }

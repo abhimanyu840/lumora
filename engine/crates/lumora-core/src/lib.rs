@@ -1,6 +1,7 @@
 pub mod buffer;
 pub mod color;
 pub mod dag;
+pub mod exporter;
 
 pub use buffer::{BufferError, PixelBufferF32, PixelBufferRgba8, Rgba8, RgbaF32};
 pub use color::{
@@ -8,3 +9,4 @@ pub use color::{
     srgb_to_linear, xyz_to_lab, xyz_to_linear, Hsl, Lab,
 };
 pub use dag::{ContrastOp, DagNode, ExposureOp, ImageOp, PipelineDAG, SaturationOp};
+pub use exporter::{ExportError, ExportFormat, ImageExporter};

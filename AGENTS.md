@@ -29,9 +29,10 @@ Status: new project, 1 commit (`7801542`). Groundwork initialized with deep rese
 | check adb device | `adb -s VSNF6DIBCU99CE89 get-state` | `verified` — device online: realme RMX3870 (Android 16, API 36, arm64-v8a) |
 | backend install | `pip install -r backend/requirements.txt` | `verified` — requirements.txt defined |
 | backend run | `uvicorn app.main:app --reload --port 8000` | `verified` — tested via pytest and TestClient |
-| backend test | `python -m pytest backend/tests` | `verified` — 16 tests pass in 0.65s |
+| backend test | `python -m pytest backend/tests` | `verified` — 16 tests pass in 0.58s |
 | engine build | `cargo build --manifest-path engine/Cargo.toml` | `verified` — builds cleanly with zero warnings |
-| engine test | `cargo test --manifest-path engine/Cargo.toml` | `verified` — 44 tests pass across lumora-core, lumora-ops, lumora-ai & lumora-ffi |
+| engine test | `cargo test --manifest-path engine/Cargo.toml` | `verified` — 53 tests pass across lumora-core (12), lumora-ops (12), lumora-ai (18) & lumora-ffi (11) |
+| engine benchmark | `cargo test --release --manifest-path engine/crates/lumora-ffi/Cargo.toml --test e2e_benchmark_tests -- --nocapture` | `verified` — 12MP full-pipeline export completes in 682ms (17.59 MP/s) |
 | mobile logic test | `cargo test --manifest-path mobile/logic/Cargo.toml` | `verified` — 2 tests pass for Contract engine bridge |
 | model conversion | `python models/scripts/convert_models.py` | `verified` — all 5 ONNX models exported & verified via onnxruntime |
 | podman compose up | `podman compose -f compose.yaml up -d` | `verified` — compose.yaml defined with db, minio, and backend |
@@ -94,11 +95,12 @@ Done when:
 
 ## Verification
 
-Application code for Phase 0, Phase 1, Phase 2, Phase 3, and Phase 4 is verified:
-- Python backend test suite: `python -m pytest backend/tests` (16 passed in 0.65s across auth, database, health, marketplace, models_dist).
-- Rust image engine test suite: `cargo test --manifest-path engine/Cargo.toml` (44 passed in 0.48s across lumora-core: 8, lumora-ops: 12, lumora-ai: 18, and lumora-ffi: 6).
+Application code for Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 is verified:
+- Python backend test suite: `python -m pytest backend/tests` (16 passed in 0.58s across auth, database, health, marketplace, models_dist).
+- Rust image engine test suite: `cargo test --manifest-path engine/Cargo.toml` (53 passed across lumora-core: 12, lumora-ops: 12, lumora-ai: 18, and lumora-ffi: 11).
+- End-to-end integration benchmark: `cargo test --release --manifest-path engine/crates/lumora-ffi/Cargo.toml --test e2e_benchmark_tests -- --nocapture` (12MP full-pipeline export completes in 682 ms at 17.59 MP/s, beating the < 1.5s ship-gate requirement).
 - Mobile logic bridge test suite: `cargo test --manifest-path mobile/logic/Cargo.toml` (2 passed in 0.02s).
-- Total Rust unit tests: 46 tests pass cleanly.
+- Total Rust unit tests: 55 tests pass cleanly.
 - AI model export & verification: `python models/scripts/convert_models.py` (all 5 ONNX models exported & verified in onnxruntime).
 - Clippy & formatting: `cargo clippy --all-targets -- -D warnings` and `cargo fmt --all -- --check` pass with 0 errors/warnings across all engine and mobile crates.
 - Python linting: `python -m ruff check backend models` passes cleanly with 0 errors.
