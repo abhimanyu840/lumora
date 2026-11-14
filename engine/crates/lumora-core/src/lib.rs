@@ -9,4 +9,4 @@ pub use color::{
     srgb_to_linear, xyz_to_lab, xyz_to_linear, Hsl, Lab,
 };
 pub use dag::{ContrastOp, DagNode, ExposureOp, ImageOp, PipelineDAG, SaturationOp};
-pub use exporter::{ExportError, ExportFormat, ImageExporter};
+pub use exporter::{ExportError, ExportFormat, ImageExporter, TilePadding};

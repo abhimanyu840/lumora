@@ -26,6 +26,7 @@ pub struct EngineBridgeState {
     pub current_image: Option<LumoraImage>,
     pub undo_stack: Vec<LumoraImage>,
     pub redo_stack: Vec<LumoraImage>,
+    pub last_export: Option<Vec<u8>>,
 }
 
 impl EngineBridgeState {
@@ -40,6 +41,7 @@ impl EngineBridgeState {
         self.current_image = Some(img);
         self.undo_stack.clear();
         self.redo_stack.clear();
+        self.last_export = None;
         Ok(())
     }
 
@@ -92,6 +94,11 @@ impl EngineBridgeState {
             .ok_or_else(|| "No image currently loaded in engine".to_string())?;
         img.export_full_resolution(format, tile_size)
             .map_err(|e| e.to_string())
+    }
+
+    /// Retrieve the bytes of the most recently exported image, if any.
+    pub fn get_last_export(&self) -> Option<&[u8]> {
+        self.last_export.as_deref()
     }
 
     /// Dispatch and execute a Contract event by name.
@@ -379,6 +386,21 @@ impl EngineBridgeState {
                     pin.brightness = p.brightness.unwrap_or(0.0).clamp(-1.0, 1.0);
                     pin.contrast = p.contrast.unwrap_or(0.0).clamp(-1.0, 1.0);
                     pin.saturation = p.saturation.unwrap_or(0.0).clamp(-1.0, 1.0);
+
+                    let width = img.original.width;
+                    let height = img.original.height;
+                    if width > 0 && height > 0 {
+                        let px = ((pin.center_x * (width - 1) as f32) as usize)
+                            .min(width.saturating_sub(1));
+                        let py = ((pin.center_y * (height - 1) as f32) as usize)
+                            .min(height.saturating_sub(1));
+                        if let Some(p_orig) = img.original.get_pixel(px, py) {
+                            pin.target_lab = Some(lumora_core::color::srgb_to_lab(
+                                p_orig.r, p_orig.g, p_orig.b,
+                            ));
+                        }
+                    }
+
                     img.upoints.add_pin(pin);
                     let _ = img.render_preview(1080, 1080);
                 }
@@ -584,9 +606,35 @@ impl EngineBridgeState {
                 }
             }
             "export_rendered_image" => {
-                // Renders full-resolution buffer without preview bounds
-                if let Some(img) = self.current_image.as_mut() {
-                    let _ = img.render_preview(0, 0);
+                #[derive(Deserialize, Default)]
+                struct ExportPayload {
+                    format: Option<String>,
+                    quality: Option<u8>,
+                    tile_size: Option<usize>,
+                }
+                let payload: ExportPayload = serde_json::from_str(payload_json).unwrap_or_default();
+                let fmt = match payload.format.as_deref() {
+                    Some("png") => lumora_core::exporter::ExportFormat::Png,
+                    Some("webp") => lumora_core::exporter::ExportFormat::WebP { lossless: true },
+                    _ => lumora_core::exporter::ExportFormat::Jpeg {
+                        quality: payload.quality.unwrap_or(90).clamp(1, 100),
+                    },
+                };
+                let tile_sz = payload.tile_size.unwrap_or(512);
+                let export_res = img.export_full_resolution(fmt, tile_sz);
+                match export_res {
+                    Ok(bytes) => {
+                        self.last_export = Some(bytes);
+                    }
+                    Err(e) => {
+                        return EventResponse {
+                            success: false,
+                            event: event_name.to_string(),
+                            width: img.preview.width as u32,
+                            height: img.preview.height as u32,
+                            error: Some(format!("Export failed: {e}")),
+                        };
+                    }
                 }
             }
             "undo_edit" => {

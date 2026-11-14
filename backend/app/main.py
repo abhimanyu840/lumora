@@ -1,12 +1,21 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.core.database import init_db
-from app.api.auth import router as auth_router
-from app.api.health import router as health_router
-from app.api.models_dist import router as models_router
-from app.api.presets import router as presets_router
+
+# Ensure backend root is on sys.path so 'import backend.app.main' or 'import app.main' both resolve cleanly
+_backend_root = str(Path(__file__).resolve().parent.parent)
+if _backend_root not in sys.path:
+    sys.path.insert(0, _backend_root)
+
+from app.core.config import settings  # noqa: E402
+from app.core.database import init_db  # noqa: E402
+from app.api.auth import router as auth_router  # noqa: E402
+from app.api.health import router as health_router  # noqa: E402
+from app.api.models_dist import router as models_router  # noqa: E402
+from app.api.presets import router as presets_router  # noqa: E402
 
 
 @asynccontextmanager

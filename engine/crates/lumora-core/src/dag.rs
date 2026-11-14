@@ -12,6 +12,12 @@ pub trait ImageOp: Send + Sync {
     fn name(&self) -> &str;
     fn apply(&self, buffer: &mut PixelBufferF32);
 
+    /// Prepare the operation prior to tiled execution with awareness of the full source buffer
+    /// and all preceding enabled operations in the pipeline DAG.
+    ///
+    /// Allows operations (such as U-Point control pins) to resolve target values from upstream adjustments.
+    fn prepare_pipeline(&self, _source: &PixelBufferF32, _upstream_ops: &[&dyn ImageOp]) {}
+
     /// Apply the operation to an extracted tile with awareness of its global image coordinates.
     ///
     /// Point-wise operations default to invoking `self.apply(tile)`. Spatial operations
@@ -25,6 +31,23 @@ pub trait ImageOp: Send + Sync {
         _full_height: usize,
     ) {
         self.apply(tile);
+    }
+
+    /// Apply the operation to an extracted tile with optional access to the full source image buffer.
+    ///
+    /// Allows spatial operations (such as U-Point pins and convolution/details kernels)
+    /// to sample neighbor pixels and target colors outside the immediate tile boundary,
+    /// eliminating seam artifacts completely.
+    fn apply_tile_with_source(
+        &self,
+        tile: &mut PixelBufferF32,
+        origin_x: usize,
+        origin_y: usize,
+        full_width: usize,
+        full_height: usize,
+        _source: Option<&PixelBufferF32>,
+    ) {
+        self.apply_tile(tile, origin_x, origin_y, full_width, full_height);
     }
 }
 

@@ -327,11 +327,15 @@ fn test_ffi_export_image_all_formats_and_null_safety() {
             LUMORA_ERR_NULL_PTR
         );
 
-        // Invalid format code
+        // Invalid format code: verify out pointers are nulled
+        out_data = 0x1234 as *mut u8;
+        out_len = 9999;
         assert_eq!(
             lumora_export_image(handle, 99, 90, 32, &mut out_data, &mut out_len),
             LUMORA_ERR_INVALID_PARAM
         );
+        assert!(out_data.is_null());
+        assert_eq!(out_len, 0);
 
         // 1. Export JPEG (format_code = 0)
         assert_eq!(

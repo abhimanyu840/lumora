@@ -254,6 +254,7 @@ impl LumoraImage {
         }
 
         // 8. AI Enhancement passes
+        let mut has_super_res = false;
         for &(op_type, strength) in &self.ai_passes {
             match op_type {
                 1 => {
@@ -263,7 +264,7 @@ impl LumoraImage {
                     dag.add_node(AiZeroDceOp::new(strength));
                 }
                 3 => {
-                    dag.add_node(AiSuperResOp::new());
+                    has_super_res = true;
                 }
                 4 => {
                     dag.add_node(AiDepthBokehOp::new(0.5, strength, 8.0));
@@ -272,7 +273,14 @@ impl LumoraImage {
             }
         }
 
-        exporter.export_tiled_dag(&self.original, &dag)
+        if has_super_res {
+            let base_rgba = exporter.render_tiled_dag(&self.original, &dag)?;
+            let mut base_f32 = base_rgba.to_f32();
+            AiSuperResOp::new().apply(&mut base_f32);
+            exporter.export_f32(&base_f32)
+        } else {
+            exporter.export_tiled_dag(&self.original, &dag)
+        }
     }
 }
 
@@ -581,12 +589,23 @@ pub unsafe extern "C" fn lumora_add_upoint(
         return LUMORA_ERR_NULL_PTR;
     }
 
+    let img = &mut *image;
     let mut pin = UPointPin::new(x, y, radius);
     pin.brightness = brightness.clamp(-1.0, 1.0);
     pin.contrast = contrast.clamp(-1.0, 1.0);
     pin.saturation = saturation.clamp(-1.0, 1.0);
 
-    (*image).upoints.add_pin(pin);
+    let width = img.original.width;
+    let height = img.original.height;
+    if width > 0 && height > 0 {
+        let px = ((pin.center_x * (width - 1) as f32) as usize).min(width.saturating_sub(1));
+        let py = ((pin.center_y * (height - 1) as f32) as usize).min(height.saturating_sub(1));
+        if let Some(p) = img.original.get_pixel(px, py) {
+            pin.target_lab = Some(lumora_core::color::srgb_to_lab(p.r, p.g, p.b));
+        }
+    }
+
+    img.upoints.add_pin(pin);
     LUMORA_SUCCESS
 }
 
@@ -756,6 +775,10 @@ pub unsafe extern "C" fn lumora_export_image(
         return LUMORA_ERR_NULL_PTR;
     }
 
+    // Defensively initialize output pointers
+    *out_data = ptr::null_mut();
+    *out_len = 0;
+
     let q = if (1..=100).contains(&quality) {
         quality as u8
     } else {
@@ -783,7 +806,11 @@ pub unsafe extern "C" fn lumora_export_image(
             std::mem::forget(boxed);
             LUMORA_SUCCESS
         }
-        Err(_) => LUMORA_ERR_PIPELINE,
+        Err(_) => {
+            *out_data = ptr::null_mut();
+            *out_len = 0;
+            LUMORA_ERR_PIPELINE
+        }
     }
 }
 

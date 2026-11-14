@@ -18,6 +18,7 @@ use lumora_core::exporter::{ExportFormat, ImageExporter};
 use lumora_ffi::LumoraImage;
 use lumora_ops::color_grading::ColorGrading;
 use lumora_ops::curves::{CurvePoint, ToneCurves};
+use lumora_ops::details::DetailsAdjustment;
 use lumora_ops::hsl::HslMixer;
 use lumora_ops::upoint::{UPointMask, UPointPin};
 
@@ -307,4 +308,82 @@ fn test_ffi_session_e2e_export() {
 
     assert!(!jpeg_bytes.is_empty());
     assert_eq!(&jpeg_bytes[0..3], &[0xFF, 0xD8, 0xFF]);
+}
+
+#[test]
+fn test_tiled_export_parity_unresolved_upoint_and_details() {
+    let width = 128;
+    let height = 96;
+    let source = create_test_pattern(width, height);
+
+    let mut dag = PipelineDAG::new();
+    dag.add_node(ExposureOp::new(0.3));
+
+    // Spatial filter: Details sharpening across tile seams
+    dag.add_node(DetailsAdjustment::new(0.25, 0.4));
+
+    // Spatial filter: U-Point pin WITHOUT pre-resolving targets (relies on source sampling across tiles)
+    let mut upoints = UPointMask::new();
+    let mut pin = UPointPin::new(0.35, 0.35, 0.4);
+    pin.brightness = 0.3;
+    pin.contrast = 0.2;
+    upoints.add_pin(pin);
+    dag.add_node(upoints);
+
+    // 32x32 tiles (many tile seams crossing pin and details filter)
+    let exp_32 = ImageExporter::new(ExportFormat::Png).with_tile_size(32);
+    let rendered_32 = exp_32.render_tiled_dag(&source, &dag).unwrap();
+
+    // 64x64 tiles
+    let exp_64 = ImageExporter::new(ExportFormat::Png).with_tile_size(64);
+    let rendered_64 = exp_64.render_tiled_dag(&source, &dag).unwrap();
+
+    // Untiled 512x512
+    let exp_untiled = ImageExporter::new(ExportFormat::Png).with_tile_size(512);
+    let rendered_untiled = exp_untiled.render_tiled_dag(&source, &dag).unwrap();
+
+    assert_eq!(
+        rendered_32.data, rendered_untiled.data,
+        "32x32 tiled render with UPoint and Details must match untiled render identically"
+    );
+    assert_eq!(
+        rendered_64.data, rendered_untiled.data,
+        "64x64 tiled render with UPoint and Details must match untiled render identically"
+    );
+}
+
+#[test]
+fn test_super_res_session_export_4x_dimensions() {
+    let width = 32u32;
+    let height = 24u32;
+    let raw_rgba = vec![140u8; (width * height * 4) as usize];
+
+    let mut session = LumoraImage::new(width, height, &raw_rgba).expect("Create session");
+    session.exposure = 0.2;
+    // Add Super-Resolution AI pass (op_type == 3)
+    session.ai_passes.push((3, 1.0));
+
+    let png_bytes = session
+        .export_full_resolution(ExportFormat::Png, 16)
+        .expect("Export super-res PNG");
+
+    assert!(!png_bytes.is_empty());
+    assert_eq!(
+        &png_bytes[0..8],
+        &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+    );
+
+    // Read IHDR chunk dimensions (width at bytes 16..20, height at 20..24 in big-endian)
+    let out_w = u32::from_be_bytes(png_bytes[16..20].try_into().unwrap());
+    let out_h = u32::from_be_bytes(png_bytes[20..24].try_into().unwrap());
+    assert_eq!(
+        out_w,
+        width * 4,
+        "Super-resolution export width must be 4x original"
+    );
+    assert_eq!(
+        out_h,
+        height * 4,
+        "Super-resolution export height must be 4x original"
+    );
 }

@@ -1,6 +1,6 @@
 # Lumora
 
-[![Rust Tests](https://img.shields.io/badge/Rust_Tests-55_passing-brightgreen.svg)]()
+[![Rust Tests](https://img.shields.io/badge/Rust_Tests-60_passing-brightgreen.svg)]()
 [![Backend Tests](https://img.shields.io/badge/Backend_Tests-16_passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)]()
 
@@ -135,10 +135,10 @@ Measured on a 12 Megapixel (4000 x 3000 = 12,000,000 pixels) photograph:
 | Pipeline Stage | Operations Included | Execution Time | Throughput |
 |---|---|---|---|
 | **Full DAG Render** | Exposure + Curves + HSL + 3-Way Color Grading + U-Point Mask | ~35 ms (release) | ~340 MP/s |
-| **End-to-End Tiled Export** | Full DAG + AI Zero-DCE + 512x512 Tiling + JPEG Encoding | **682 ms (release)** | **17.6 MP/s** |
+| **End-to-End Tiled Export** | Full DAG + AI Zero-DCE + 512x512 Tiling + JPEG Encoding | **585 ms (release)** | **20.5 MP/s** |
 | **Interactive Preview** | 1080p real-time scrubbing | < 4 ms (release) | > 250 FPS |
 
-*Ship-gate requirement: full end-to-end 12MP processing and export under 1.5 seconds (< 1500 ms).* **Achieved: 682 ms.**
+*Ship-gate requirement: full end-to-end 12MP processing and export under 1.5 seconds (< 1500 ms).* **Achieved: 585 ms.**
 
 ---
 
@@ -153,7 +153,7 @@ Measured on a 12 Megapixel (4000 x 3000 = 12,000,000 pixels) photograph:
 ### 1. Run Rust Engine Test Suite
 
 ```powershell
-# Run all 53 engine tests across all crates
+# Run all 57 engine tests across all crates
 cargo test --manifest-path engine/Cargo.toml
 
 # Run the full end-to-end integration and 12MP benchmark test

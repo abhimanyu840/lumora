@@ -182,3 +182,39 @@ fn test_exporter_file_system_roundtrip() {
     assert!(temp_jpg_path.exists());
     let _ = fs::remove_file(&temp_jpg_path);
 }
+
+#[test]
+fn test_extract_tile_bounds_clamping_and_empty() {
+    let mut buf = PixelBufferF32::new(10, 10);
+    buf.set_pixel(0, 0, RgbaF32::rgb(1.0, 0.5, 0.25)).unwrap();
+
+    // Tile requesting region beyond buffer boundaries must clamp and zero-fill without panicking
+    let tile = ImageExporter::extract_tile(&buf, 8, 8, 8, 8);
+    assert_eq!(tile.width, 8);
+    assert_eq!(tile.height, 8);
+
+    // Extraction completely outside buffer
+    let tile_outside = ImageExporter::extract_tile(&buf, 20, 20, 5, 5);
+    assert_eq!(tile_outside.width, 5);
+    assert_eq!(tile_outside.height, 5);
+    assert!(tile_outside.data.iter().all(|&v| v == 0.0));
+}
+
+#[test]
+fn test_jpeg_alpha_matting_against_white_background() {
+    let exporter = ImageExporter::new(ExportFormat::Jpeg { quality: 90 });
+
+    // 2x1 image:
+    // Pixel 0: fully transparent red [255, 0, 0, 0] -> should matte against white to [255, 255, 255]
+    // Pixel 1: opaque green [0, 255, 0, 255] -> should remain green
+    let rgba_bytes = vec![
+        255, 0, 0, 0, // transparent red
+        0, 255, 0, 255, // opaque green
+    ];
+
+    let jpeg_bytes = exporter
+        .encode_rgba8(2, 1, &rgba_bytes)
+        .expect("JPEG encoding with transparency matting should succeed");
+    assert!(!jpeg_bytes.is_empty());
+    assert_eq!(&jpeg_bytes[0..3], &[0xFF, 0xD8, 0xFF]);
+}

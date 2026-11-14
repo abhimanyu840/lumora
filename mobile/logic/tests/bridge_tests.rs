@@ -197,9 +197,52 @@ fn test_bridge_contract_specific_ui_events() {
             .success
     );
 
-    // 9. Full export
-    assert!(bridge.handle_event("export_rendered_image", "{}").success);
+    // 9. Full export with last_export verification
+    let res_export = bridge.handle_event("export_rendered_image", "{}");
+    assert!(res_export.success);
+    let exported = bridge.get_last_export().expect("Last export present");
+    assert_eq!(&exported[0..3], &[0xFF, 0xD8, 0xFF]);
 
     // 10. Clear pins
     assert!(bridge.handle_event("clear_all_upoint_pins", "{}").success);
+}
+
+#[test]
+fn test_bridge_full_tiled_export_formats() {
+    let mut bridge = EngineBridgeState::new();
+    let width = 32u32;
+    let height = 32u32;
+    let raw_rgba = vec![200u8; (width * height * 4) as usize];
+    assert!(bridge.load_image(width, height, &raw_rgba).is_ok());
+
+    // 1. Direct export_full_image API
+    let jpeg_direct = bridge
+        .export_full_image(
+            lumora_core::exporter::ExportFormat::Jpeg { quality: 80 },
+            16,
+        )
+        .expect("Direct export JPEG");
+    assert_eq!(&jpeg_direct[0..3], &[0xFF, 0xD8, 0xFF]);
+
+    // 2. Export event for PNG
+    let res_png = bridge.handle_event(
+        "export_rendered_image",
+        r#"{"format": "png", "tile_size": 16}"#,
+    );
+    assert!(res_png.success);
+    let png_bytes = bridge.get_last_export().expect("PNG export exists");
+    assert_eq!(
+        &png_bytes[0..8],
+        &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+    );
+
+    // 3. Export event for WebP
+    let res_webp = bridge.handle_event(
+        "export_rendered_image",
+        r#"{"format": "webp", "tile_size": 16}"#,
+    );
+    assert!(res_webp.success);
+    let webp_bytes = bridge.get_last_export().expect("WebP export exists");
+    assert_eq!(&webp_bytes[0..4], b"RIFF");
+    assert_eq!(&webp_bytes[8..12], b"WEBP");
 }

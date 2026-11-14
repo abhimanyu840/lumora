@@ -29,9 +29,40 @@ impl UPointPin {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UPointMask {
     pub pins: Vec<UPointPin>,
+    #[serde(skip)]
+    resolved_cache: std::sync::RwLock<Vec<Option<Lab>>>,
+}
+
+impl PartialEq for UPointMask {
+    fn eq(&self, other: &Self) -> bool {
+        self.pins == other.pins
+    }
+}
+
+impl Default for UPointMask {
+    fn default() -> Self {
+        Self {
+            pins: Vec::new(),
+            resolved_cache: std::sync::RwLock::new(Vec::new()),
+        }
+    }
+}
+
+impl Clone for UPointMask {
+    fn clone(&self) -> Self {
+        let cached = self
+            .resolved_cache
+            .read()
+            .map(|c| c.clone())
+            .unwrap_or_default();
+        Self {
+            pins: self.pins.clone(),
+            resolved_cache: std::sync::RwLock::new(cached),
+        }
+    }
 }
 
 impl UPointMask {
@@ -41,6 +72,9 @@ impl UPointMask {
 
     pub fn add_pin(&mut self, pin: UPointPin) {
         self.pins.push(pin);
+        if let Ok(mut lock) = self.resolved_cache.write() {
+            lock.clear();
+        }
     }
 
     /// Pre-resolve sampled target Lab values for all control pins from a reference buffer.
@@ -64,7 +98,7 @@ impl UPointMask {
     }
 
     pub fn apply_to_buffer(&self, buffer: &mut PixelBufferF32) {
-        self.apply_to_tile(buffer, 0, 0, buffer.width, buffer.height);
+        self.apply_to_tile_with_source(buffer, 0, 0, buffer.width, buffer.height, None);
     }
 
     /// Apply selective U-Point pins to an extracted tile using global image coordinates.
@@ -75,6 +109,19 @@ impl UPointMask {
         origin_y: usize,
         full_width: usize,
         full_height: usize,
+    ) {
+        self.apply_to_tile_with_source(tile, origin_x, origin_y, full_width, full_height, None);
+    }
+
+    /// Apply selective U-Point pins to an extracted tile with access to the source buffer for target sampling.
+    pub fn apply_to_tile_with_source(
+        &self,
+        tile: &mut PixelBufferF32,
+        origin_x: usize,
+        origin_y: usize,
+        full_width: usize,
+        full_height: usize,
+        source: Option<&PixelBufferF32>,
     ) {
         if self.pins.is_empty()
             || tile.width == 0
@@ -88,21 +135,32 @@ impl UPointMask {
         let tile_w = tile.width;
         let aspect = full_width as f32 / full_height as f32;
 
+        let cache_lock = self.resolved_cache.read().ok();
+        let cached_targets = cache_lock.as_deref();
+
         // Ensure target Lab is sampled for pins that do not have it explicitly set
         let mut resolved_pins = self.pins.clone();
-        for pin in &mut resolved_pins {
+        for (i, pin) in resolved_pins.iter_mut().enumerate() {
             if pin.target_lab.is_none() {
-                let px = ((pin.center_x * (full_width - 1) as f32) as usize)
-                    .min(full_width.saturating_sub(1));
-                let py = ((pin.center_y * (full_height - 1) as f32) as usize)
-                    .min(full_height.saturating_sub(1));
-                if px >= origin_x
-                    && px < origin_x + tile_w
-                    && py >= origin_y
-                    && py < origin_y + tile.height
-                {
-                    if let Some(p) = tile.get_pixel(px - origin_x, py - origin_y) {
-                        pin.target_lab = Some(srgb_to_lab(p.r, p.g, p.b));
+                if let Some(Some(lab)) = cached_targets.and_then(|c| c.get(i)) {
+                    pin.target_lab = Some(*lab);
+                } else {
+                    let px = ((pin.center_x * (full_width - 1) as f32) as usize)
+                        .min(full_width.saturating_sub(1));
+                    let py = ((pin.center_y * (full_height - 1) as f32) as usize)
+                        .min(full_height.saturating_sub(1));
+                    if px >= origin_x
+                        && px < origin_x + tile_w
+                        && py >= origin_y
+                        && py < origin_y + tile.height
+                    {
+                        if let Some(p) = tile.get_pixel(px - origin_x, py - origin_y) {
+                            pin.target_lab = Some(srgb_to_lab(p.r, p.g, p.b));
+                        }
+                    } else if let Some(src) = source {
+                        if let Some(p) = src.get_pixel(px, py) {
+                            pin.target_lab = Some(srgb_to_lab(p.r, p.g, p.b));
+                        }
                     }
                 }
             }
@@ -208,6 +266,44 @@ impl ImageOp for UPointMask {
         self.apply_to_buffer(buffer);
     }
 
+    fn prepare_pipeline(&self, source: &PixelBufferF32, upstream_ops: &[&dyn ImageOp]) {
+        if self.pins.is_empty() || source.width == 0 || source.height == 0 {
+            return;
+        }
+        let width = source.width;
+        let height = source.height;
+        let mut cache = Vec::with_capacity(self.pins.len());
+
+        for pin in &self.pins {
+            if let Some(lab) = pin.target_lab {
+                cache.push(Some(lab));
+            } else {
+                let px =
+                    ((pin.center_x * (width - 1) as f32) as usize).min(width.saturating_sub(1));
+                let py =
+                    ((pin.center_y * (height - 1) as f32) as usize).min(height.saturating_sub(1));
+                if let Some(p) = source.get_pixel(px, py) {
+                    let mut sample_buf = PixelBufferF32::new(1, 1);
+                    let _ = sample_buf.set_pixel(0, 0, p);
+                    for op in upstream_ops {
+                        op.apply(&mut sample_buf);
+                    }
+                    if let Some(final_p) = sample_buf.get_pixel(0, 0) {
+                        cache.push(Some(srgb_to_lab(final_p.r, final_p.g, final_p.b)));
+                    } else {
+                        cache.push(None);
+                    }
+                } else {
+                    cache.push(None);
+                }
+            }
+        }
+
+        if let Ok(mut lock) = self.resolved_cache.write() {
+            *lock = cache;
+        }
+    }
+
     fn apply_tile(
         &self,
         tile: &mut PixelBufferF32,
@@ -217,5 +313,17 @@ impl ImageOp for UPointMask {
         full_height: usize,
     ) {
         self.apply_to_tile(tile, origin_x, origin_y, full_width, full_height);
+    }
+
+    fn apply_tile_with_source(
+        &self,
+        tile: &mut PixelBufferF32,
+        origin_x: usize,
+        origin_y: usize,
+        full_width: usize,
+        full_height: usize,
+        source: Option<&PixelBufferF32>,
+    ) {
+        self.apply_to_tile_with_source(tile, origin_x, origin_y, full_width, full_height, source);
     }
 }
