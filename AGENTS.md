@@ -26,6 +26,7 @@ Status: new project, 1 commit (`7801542`). Groundwork initialized with deep rese
 | check docker | `docker --version` | `verified` — Docker version 29.2.1 |
 | check node | `node --version` | `verified` — v25.8.0 |
 | check gh | `gh --version` | `verified` — gh version 2.88.0 |
+| check adb device | `adb -s VSNF6DIBCU99CE89 get-state` | `verified` — device online: realme RMX3870 (Android 16, API 36, arm64-v8a) |
 | backend install | `pip install -r backend/requirements.txt` | `unverified` — backend not scaffolded yet |
 | backend run | `uvicorn backend.app.main:app --reload --port 8000` | `unverified` — backend not scaffolded yet |
 | engine build | `cargo build --manifest-path engine/Cargo.toml` | `unverified` — engine not scaffolded yet |
