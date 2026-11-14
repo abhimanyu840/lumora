@@ -31,7 +31,8 @@ Status: new project, 1 commit (`7801542`). Groundwork initialized with deep rese
 | backend run | `uvicorn app.main:app --reload --port 8000` | `verified` — tested via pytest and TestClient |
 | backend test | `python -m pytest backend/tests` | `verified` — 8 tests pass in 0.12s |
 | engine build | `cargo build --manifest-path engine/Cargo.toml` | `verified` — builds cleanly with zero warnings |
-| engine test | `cargo test --manifest-path engine/Cargo.toml` | `verified` — 20 tests pass across lumora-core & lumora-ops |
+| engine test | `cargo test --manifest-path engine/Cargo.toml` | `verified` — 38 tests pass across lumora-core, lumora-ops & lumora-ai |
+| model conversion | `python models/scripts/convert_models.py` | `verified` — all 5 ONNX models exported & verified via onnxruntime |
 | podman compose up | `podman compose -f compose.yaml up -d` | `verified` — compose.yaml defined with db, minio, and backend |
 
 ## Layout
@@ -50,14 +51,16 @@ backend/              # FastAPI cloud sync & marketplace service (planned)
     schemas/          # Pydantic data transfer schemas
 engine/               # Rust core image processing engine (planned)
   crates/
-    lumora-core/      # Pixel buffer, color spaces, non-destructive node graph
-    lumora-ops/       # Lightroom & Snapseed image manipulation kernels
-    lumora-ai/        # On-device model execution bindings (ONNX / Tract)
+    lumora-core/      # Pixel buffer, color spaces, non-destructive node graph (created)
+    lumora-ops/       # Lightroom & Snapseed image manipulation kernels (created)
+    lumora-ai/        # On-device model execution bindings, models & LRU raster cache (created)
 mobile/               # Exact runtime mobile application (planned)
   contracts/          # Contract UI view declarations (4-Tab workspace)
   logic/              # Rust / TS logic modules bridging engine and UI
-models/               # Quantized model conversion & weights manifest (planned)
-compose.yaml          # Podman / Docker multi-container composition (planned)
+models/               # Quantized model conversion & weights manifest (created)
+  scripts/            # Conversion and ONNX export scripts
+  weights/            # Exported ONNX model binaries
+compose.yaml          # Podman / Docker multi-container composition (created)
 ```
 
 ## Conventions
@@ -83,16 +86,16 @@ Done when:
 ## Not Yet Built
 
 - **Mobile Application (`mobile/`):** Exact Contract layouts, gesture canvas, and mobile bridge (Phase 4).
-- **On-Device AI Pipeline (`models/`, `lumora-ai`):** Model quantizations (DnCNN, MiDaS, MobileNet, Real-ESRGAN, Zero-DCE) and ONNX runtime bindings (Phase 2).
 - **Preset Marketplace Endpoints:** Advanced rating and file upload S3 storage integration (Phase 3).
 
 ## Verification
 
-Application code for Phase 0 and Phase 1 is verified:
+Application code for Phase 0, Phase 1, and Phase 2 is verified:
 - Python backend test suite: `python -m pytest backend/tests` (8 passed in 0.12s).
-- Rust image engine test suite: `cargo test --manifest-path engine/Cargo.toml` (20 passed in 0.40s).
+- Rust image engine test suite: `cargo test --manifest-path engine/Cargo.toml` (38 passed in 0.42s across lumora-core: 8, lumora-ops: 12, and lumora-ai: 18).
+- AI model export & verification: `python models/scripts/convert_models.py` (5 ONNX models exported and verified in onnxruntime).
 - Clippy & formatting: `cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings` and `cargo fmt --manifest-path engine/Cargo.toml --all -- --check` pass with 0 errors/warnings.
-- Backend linting: `python -m ruff check backend` passes cleanly.
+- Python linting: `python -m ruff check backend models` passes cleanly with 0 errors.
 
 ## Open Items & Decisions
 

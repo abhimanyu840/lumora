@@ -2,5 +2,6 @@
 members = [
     "crates/lumora-core",
     "crates/lumora-ops",
+    "crates/lumora-ai",
 ]
 resolver = "2"

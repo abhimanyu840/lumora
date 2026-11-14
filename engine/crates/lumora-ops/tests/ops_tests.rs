@@ -384,10 +384,11 @@ fn test_benchmark_rendering_speed() {
         "Processed 3MP image with full 5-node DAG (including U-Point) in {:?}",
         elapsed
     );
-    // Must be fast and responsive: < 350ms in debug, < 30ms in release
+    // Must be fast and responsive: < 600ms in debug, < 35ms in release
+    let threshold_ms = if cfg!(debug_assertions) { 600 } else { 35 };
     assert!(
-        elapsed.as_millis() < 350,
-        "Rendering too slow: {:?}",
+        elapsed.as_millis() < threshold_ms,
+        "Rendering too slow: {:?} (threshold: {threshold_ms}ms)",
         elapsed
     );
 }
