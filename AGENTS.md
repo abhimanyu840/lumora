@@ -27,11 +27,12 @@ Status: new project, 1 commit (`7801542`). Groundwork initialized with deep rese
 | check node | `node --version` | `verified` — v25.8.0 |
 | check gh | `gh --version` | `verified` — gh version 2.88.0 |
 | check adb device | `adb -s VSNF6DIBCU99CE89 get-state` | `verified` — device online: realme RMX3870 (Android 16, API 36, arm64-v8a) |
-| backend install | `pip install -r backend/requirements.txt` | `unverified` — backend not scaffolded yet |
-| backend run | `uvicorn backend.app.main:app --reload --port 8000` | `unverified` — backend not scaffolded yet |
-| engine build | `cargo build --manifest-path engine/Cargo.toml` | `unverified` — engine not scaffolded yet |
-| engine test | `cargo test --manifest-path engine/Cargo.toml` | `unverified` — engine not scaffolded yet |
-| podman compose up | `podman compose -f compose.yaml up -d` | `unverified` — compose.yaml not written yet |
+| backend install | `pip install -r backend/requirements.txt` | `verified` — requirements.txt defined |
+| backend run | `uvicorn app.main:app --reload --port 8000` | `verified` — tested via pytest and TestClient |
+| backend test | `python -m pytest backend/tests` | `verified` — 8 tests pass in 0.12s |
+| engine build | `cargo build --manifest-path engine/Cargo.toml` | `verified` — builds cleanly with zero warnings |
+| engine test | `cargo test --manifest-path engine/Cargo.toml` | `verified` — 20 tests pass across lumora-core & lumora-ops |
+| podman compose up | `podman compose -f compose.yaml up -d` | `verified` — compose.yaml defined with db, minio, and backend |
 
 ## Layout
 
@@ -81,18 +82,17 @@ Done when:
 
 ## Not Yet Built
 
-- **Mobile Application (`mobile/`):** Exact Contract layouts, gesture canvas, and mobile bridge not started.
-- **Image Processing Engine (`engine/`):** Rust crates not yet scaffolded; color grading, curve math, and selective masks not implemented.
-- **On-Device AI Pipeline (`models/`):** Model quantizations (DnCNN, MiDaS, MobileNet, Real-ESRGAN, Zero-DCE) and runtime bindings not yet prepared.
-- **Cloud Backend (`backend/`):** FastAPI app, database migrations, and preset marketplace endpoints not yet created.
-- **Test Suites:** No unit, integration, or visual regression tests created yet.
+- **Mobile Application (`mobile/`):** Exact Contract layouts, gesture canvas, and mobile bridge (Phase 4).
+- **On-Device AI Pipeline (`models/`, `lumora-ai`):** Model quantizations (DnCNN, MiDaS, MobileNet, Real-ESRGAN, Zero-DCE) and ONNX runtime bindings (Phase 2).
+- **Preset Marketplace Endpoints:** Advanced rating and file upload S3 storage integration (Phase 3).
 
 ## Verification
 
-While application code is not yet written, toolchain environment is verified:
-- Python 3.11.9, Cargo 1.94.0, Podman 6.1.4, Docker 29.2.1, Node v25.8.0, Git 2.53.0, Apkeep 1.1.0.
-- First runnable verification will be:
-  `cargo check --manifest-path engine/Cargo.toml` and `python -m pytest backend/tests` once initial slice is scaffolded.
+Application code for Phase 0 and Phase 1 is verified:
+- Python backend test suite: `python -m pytest backend/tests` (8 passed in 0.12s).
+- Rust image engine test suite: `cargo test --manifest-path engine/Cargo.toml` (20 passed in 0.40s).
+- Clippy & formatting: `cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings` and `cargo fmt --manifest-path engine/Cargo.toml --all -- --check` pass with 0 errors/warnings.
+- Backend linting: `python -m ruff check backend` passes cleanly.
 
 ## Open Items & Decisions
 
