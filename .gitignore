@@ -1,5 +1,5 @@
 # Antigravity & AI scratch
-ai-workspace/scratch/
+ai-workspace/
 
 # Python
 __pycache__/
@@ -13,11 +13,22 @@ env/
 dist/
 build/
 .pytest_cache/
+.ruff_cache/
 
 # Rust
 target/
 **/target/
 **/*.rs.bk
+
+# Android & Mobile Build Artifacts
+.gradle/
+**/build/
+**/build_cli/
+*.class
+*.dex
+*.apk
+*.ap_
+*.aab
 
 # Node / JS / Bun / Exact
 node_modules/
